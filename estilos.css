@@ -1,0 +1,25 @@
+
+
+
+.redondo
+{
+    background-color: rgba(77, 151, 216, 0.329);
+    border-radius: 100px;
+    width: 600px;
+    height: 300px;
+    margin-top: 10%;
+    margin-left: 3%;
+}
+
+
+.coluna
+{
+    background-size: 100%;
+}
+
+.total
+{
+    width: 400px;
+    height: 900px;
+    background-size: cover;
+}
