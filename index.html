@@ -1,39 +1,103 @@
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>Leitor de cédulas</title>
-   
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <!--Meu css-->
-    <link rel="stylesheet" href="estilos.css">
+      #webcam-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+      }
+
+      #label-container {
+        text-align: center;
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        color: white;
+      }
+    </style>
+    <title>App Leitor de Cédulas</title>
   </head>
-  <body class="total">
+  <body>
+    <div id="webcam-container"></div>
+    <div id="label-container">Leitor de Cédulas</div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+      // Link para o seu modelo fornecido pelo painel de exportação do Teachable Machine
+      const URL = "https://teachablemachine.withgoogle.com/models/SenrnC18v/";
 
-  
-    
-    <video id="video"></video> 
-    <div id="label-container"></div>
-    
-    <div class="coluna" ><button type="button" class="btn btn-primary; redondo"  onclick="init()"><h1 class="central" alt="Clique na parte inferior da sua tela">Clique na parte inferior da sua tela</h1></button></div>
-   
-     
-      
+      let model, webcam, labelContainer, maxPredictions;
+      let isFrozen = false;
 
+      // Carregar o modelo de imagem e configurar a webcam
+      async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-    
-    <!-- Meu JavaScript -->
-    <script src="javascript.js"></script>
-    <script src="../04_model/"></script>
-    <!-- IA JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+        // Carregar o modelo e os metadados
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
 
-    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        // Função de conveniência para configurar uma webcam
+        const flip = true; // Inverter a câmera
+        webcam = new tmImage.Webcam(1000, 750, flip); // Largura, altura, inverter
+        await webcam.setup(); // Solicitar acesso à webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // Anexar elementos ao DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+      }
+
+      async function loop() {
+        webcam.update(); // Atualizar o quadro da webcam
+        if (!isFrozen) {
+          await predict();
+        }
+        window.requestAnimationFrame(loop);
+      }
+
+      // Executar a imagem da webcam através do modelo de imagem
+      async function predict() {
+        // A previsão pode aceitar uma imagem, vídeo ou elemento de canvas HTML
+        const prediction = await model.predict(webcam.canvas);
+        let maxProbability = -1;
+        let maxClass = "";
+
+        for (let i = 0; i < maxPredictions; i++) {
+          if (prediction[i].probability > maxProbability) {
+            maxProbability = prediction[i].probability;
+            maxClass = prediction[i].className;
+          }
+        }
+
+        labelContainer.innerHTML = maxClass + ": " + maxProbability.toFixed(2);
+      }
+
+      // Adicionar um ouvinte de evento de clique para congelar/descongelar
+      document.body.addEventListener("click", () => {
+        isFrozen = !isFrozen;
+      });
+
+      // Inicialize o aplicativo automaticamente sem a necessidade de um botão Iniciar
+      init();
+    </script>
   </body>
 </html>
