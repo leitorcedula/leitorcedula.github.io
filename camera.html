@@ -37,74 +37,43 @@
   <body>
     <div id="webcam-container"></div>
     <div id="label-container">Leitor de Cédulas</div>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script type="text/javascript">
-      // Link para o seu modelo fornecido pelo painel de exportação do Teachable Machine
-      const URL = "https://teachablemachine.withgoogle.com/models/VCwOumJNe/";
-
-      let model, webcam, labelContainer, maxPredictions;
-      let isFrozen = false;
-
-      // Carregar o modelo de imagem e configurar a webcam
-      async function init() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        // Carregar o modelo e os metadados
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
-
-        // Função de conveniência para configurar uma webcam
-        const constraints = {
-          video: {
-            facingMode: {
-              exact: "environment", // Forçar o uso da câmera traseira
-            },
+      const constraints = {
+        video: {
+          facingMode: {
+            exact: "environment", // Forçar o uso da câmera traseira
           },
-        };
-        webcam = new tmImage.Webcam(1000, 750, constraints); // Largura, altura, constraints
-        await webcam.setup(); // Solicitar acesso à webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
+        },
+      };
 
-        // Anexar elementos ao DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
-      }
+      async function initCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          const videoElement = document.createElement("video");
+          videoElement.srcObject = stream;
+          videoElement.play();
 
-      async function loop() {
-        if (!isFrozen) {
-          webcam.update(); // Atualizar o quadro da webcam apenas se não estiver congelada
+          // Adicione o elemento de vídeo ao contêiner da webcam
+          const webcamContainer = document.getElementById("webcam-container");
+          webcamContainer.appendChild(videoElement);
+
+          // Adicione a lógica da sua IA aqui usando o stream de vídeo
+          const modelURL = "URL_DO_SEU_MODELO"; // Substitua pelo URL do seu modelo de IA
+          const model = await tmImage.load(modelURL, "metadata.json"); // Carregue o modelo
+          
+          // Lógica para usar o modelo com o vídeo
+          setInterval(async () => {
+            const prediction = await model.predict(videoElement);
+            // Faça algo com as previsões da IA aqui
+            console.log(prediction);
+          }, 1000); // Atualiza a IA a cada 1 segundo
+        } catch (error) {
+          console.error("Erro ao acessar a câmera: ", error);
         }
-        await predict(); // Sempre prever, mesmo se congelado
-        window.requestAnimationFrame(loop);
       }
 
-      // Executar a imagem da webcam através do modelo de imagem
-      async function predict() {
-        // A previsão pode aceitar uma imagem, vídeo ou elemento de canvas HTML
-        const prediction = await model.predict(webcam.canvas);
-        let maxProbability = -1;
-        let maxClass = "";
-
-        for (let i = 0; i < maxPredictions; i++) {
-          if (prediction[i].probability > maxProbability) {
-            maxProbability = prediction[i].probability;
-            maxClass = prediction[i].className;
-          }
-        }
-
-        labelContainer.innerHTML = maxClass + ": " + maxProbability.toFixed(2);
-      }
-
-      // Adicionar um ouvinte de evento de clique para congelar/descongelar
-      document.body.addEventListener("click", () => {
-        isFrozen = !isFrozen; // Inverter o estado de congelamento
-      });
-
-      // Inicialize o aplicativo automaticamente sem a necessidade de um botão Iniciar
-      init();
+      // Chame a função para inicializar a câmera e a IA
+      initCamera();
     </script>
   </body>
 </html>
