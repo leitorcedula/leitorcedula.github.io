@@ -59,9 +59,9 @@
         const constraints = {
           video: {
             facingMode: {
-              exact: "environment" // Forçar o uso da câmera traseira
-            }
-          }
+              exact: "environment", // Forçar o uso da câmera traseira
+            },
+          },
         };
         webcam = new tmImage.Webcam(1000, 750, constraints); // Largura, altura, constraints
         await webcam.setup(); // Solicitar acesso à webcam
