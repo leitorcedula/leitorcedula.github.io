@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+
+      #webcam-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+      }
+
+      #label-container {
+        text-align: center;
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        color: white;
+      }
+    </style>
+    <title>App Leitor de Cédulas</title>
+  </head>
+
+  <body>
+    <div id="webcam-container"></div>
+    <div id="label-container">Leitor de Cédulas</div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+      // Link para o seu modelo fornecido pelo painel de exportação do Teachable Machine
+      const URL = "https://teachablemachine.withgoogle.com/models/VCwOumJNe/";
+
+      let model, webcam, labelContainer, maxPredictions;
+      let isFrozen = false;
+
+      // Carregar o modelo de imagem e configurar a webcam
+      async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        // Carregar o modelo e os metadados
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Função de conveniência para configurar uma webcam
+        const flip = true; // Inverter a câmera
+        webcam = new tmImage.Webcam(1000, 750, flip); // Largura, altura, inverter
+        await webcam.setup(); // Solicitar acesso à webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // Anexar elementos ao DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+      }
+
+      async function loop() {
+        if (!isFrozen) {
+          webcam.update(); // Atualizar o quadro da webcam apenas se não estiver congelada
+        }
+        await predict(); // Sempre prever, mesmo se congelado
+        window.requestAnimationFrame(loop);
+      }
+
+      // Executar a imagem da webcam através do modelo de imagem
+      async function predict() {
+        // A previsão pode aceitar uma imagem, vídeo ou elemento de canvas HTML
+        const prediction = await model.predict(webcam.canvas);
+        let maxProbability = -1;
+        let maxClass = "";
+
+        for (let i = 0; i < maxPredictions; i++) {
+          if (prediction[i].probability > maxProbability) {
+            maxProbability = prediction[i].probability;
+            maxClass = prediction[i].className;
+          }
+        }
+
+        labelContainer.innerHTML = maxClass + ": " + maxProbability.toFixed(2);
+      }
+
+      // Adicionar um ouvinte de evento de clique para congelar/descongelar
+      document.body.addEventListener("click", () => {
+        isFrozen = !isFrozen; // Inverter o estado de congelamento
+      });
+
+      // Inicialize o aplicativo automaticamente sem a necessidade de um botão Iniciar
+      init();
+    </script>
+  </body>
+</html>
