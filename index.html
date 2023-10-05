@@ -33,6 +33,7 @@
     </style>
     <title>App Leitor de Cédulas</title>
   </head>
+
   <body>
     <div id="webcam-container"></div>
     <div id="label-container">Leitor de Cédulas</div>
@@ -40,7 +41,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script type="text/javascript">
       // Link para o seu modelo fornecido pelo painel de exportação do Teachable Machine
-      const URL = "https://teachablemachine.withgoogle.com/models/SenrnC18v/";
+      const URL = "https://teachablemachine.withgoogle.com/models/VCwOumJNe/";
 
       let model, webcam, labelContainer, maxPredictions;
       let isFrozen = false;
@@ -67,10 +68,10 @@
       }
 
       async function loop() {
-        webcam.update(); // Atualizar o quadro da webcam
         if (!isFrozen) {
-          await predict();
+          webcam.update(); // Atualizar o quadro da webcam apenas se não estiver congelada
         }
+        await predict(); // Sempre prever, mesmo se congelado
         window.requestAnimationFrame(loop);
       }
 
@@ -93,7 +94,7 @@
 
       // Adicionar um ouvinte de evento de clique para congelar/descongelar
       document.body.addEventListener("click", () => {
-        isFrozen = !isFrozen;
+        isFrozen = !isFrozen; // Inverter o estado de congelamento
       });
 
       // Inicialize o aplicativo automaticamente sem a necessidade de um botão Iniciar
