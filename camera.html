@@ -55,40 +55,49 @@
         model = await tmImage.load(modelURL, metadataURL);
         maxPredictions = model.getTotalClasses();
 
-        // Listar dispositivos de vídeo e selecionar a câmera traseira
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        const rearCamera = videoDevices.find(device => device.label.toLowerCase().includes('back'));
-        
-        // Função de conveniência para configurar uma webcam
+        // Restrições de vídeo para forçar o uso da câmera traseira
         const constraints = {
           video: {
-            deviceId: rearCamera ? { exact: rearCamera.deviceId } : undefined,
-            facingMode: 'environment' // Caso deviceId não seja suportado
+            facingMode: "environment"
           }
         };
-        webcam = new tmImage.Webcam(1000, 750, constraints); // Largura, altura, constraints
-        await webcam.setup(); // Solicitar acesso à webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
 
-        // Anexar elementos ao DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        // Obter acesso à câmera
+        webcam = await navigator.mediaDevices.getUserMedia(constraints);
+
+        // Criar um elemento de vídeo para a webcam e adicioná-lo ao DOM
+        const videoElement = document.createElement("video");
+        document.getElementById("webcam-container").appendChild(videoElement);
+        videoElement.srcObject = webcam;
+
+        // Esperar até que o elemento de vídeo esteja carregado e pronto para ser reproduzido
+        videoElement.onloadedmetadata = () => {
+          videoElement.play();
+          window.requestAnimationFrame(loop);
+        };
+
         labelContainer = document.getElementById("label-container");
       }
 
       async function loop() {
         if (!isFrozen) {
-          webcam.update(); // Atualizar o quadro da webcam apenas se não estiver congelada
+          await predict(); // Sempre prever, mesmo se congelado
         }
-        await predict(); // Sempre prever, mesmo se congelado
         window.requestAnimationFrame(loop);
       }
 
       // Executar a imagem da webcam através do modelo de imagem
       async function predict() {
-        // A previsão pode aceitar uma imagem, vídeo ou elemento de canvas HTML
-        const prediction = await model.predict(webcam.canvas);
+        // Capturar um quadro do vídeo
+        const video = document.querySelector("video");
+        const canvas = document.createElement("canvas");
+        canvas.width = video.width;
+        canvas.height = video.height;
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Prever usando o modelo
+        const prediction = await model.predict(canvas);
         let maxProbability = -1;
         let maxClass = "";
 
