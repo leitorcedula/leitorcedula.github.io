@@ -1,120 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
 
-    #video-element {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+      #webcam-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+      }
 
-    #label-container {
-      text-align: center;
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 24px;
-      color: white;
-    }
-  </style>
-  <title>App Leitor de Cédulas</title>
-</head>
-<body>
-  <video id="video-element" autoplay></video>
-  <div id="label-container">Leitor de Cédulas</div>
+      #label-container {
+        text-align: center;
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        color: white;
+      }
+    </style>
+    <title>App Leitor de Cédulas</title>
+  </head>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-  <script type="text/javascript">
-    const URL = "https://teachablemachine.withgoogle.com/models/VCwOumJNe/";
-    let model, webcam, labelContainer, maxPredictions;
-    let isFrozen = false;
+  <body>
+    <div id="webcam-container"></div>
+    <div id="label-container">Leitor de Cédulas</div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+      // Link para o seu modelo fornecido pelo painel de exportação do Teachable Machine
+      const URL = "https://teachablemachine.withgoogle.com/models/VCwOumJNe/";
 
-    async function init() {
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
+      let model, webcam, labelContainer, maxPredictions;
+      let isFrozen = false;
 
-      model = await tmImage.load(modelURL, metadataURL);
-      maxPredictions = model.getTotalClasses();
+      // Carregar o modelo de imagem e configurar a webcam
+      async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const frontCamera = devices.find(device => device.kind === 'videoinput' && device.label.includes('front'));
+        // Carregar o modelo e os metadados
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Função de conveniência para configurar uma webcam
         const constraints = {
           video: {
-            deviceId: frontCamera ? { exact: frontCamera.deviceId } : undefined,
-            facingMode: frontCamera ? undefined : 'user', // 'user' for frontal, 'environment' for traseira
+            facingMode: {
+              exact: "environment", // Forçar o uso da câmera traseira
+            },
           },
         };
-
-        webcam = await navigator.mediaDevices.getUserMedia(constraints);
-        videoElement.srcObject = webcam;
-
+        webcam = new tmImage.Webcam(1000, 750, constraints); // Largura, altura, constraints
+        await webcam.setup(); // Solicitar acesso à webcam
+        await webcam.play();
         window.requestAnimationFrame(loop);
-      } catch (error) {
-        console.error('Erro ao acessar a câmera:', error);
+
+        // Anexar elementos ao DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
       }
-    }
 
-    async function loop() {
-      if (!isFrozen && webcam) {
-        await predict();
-      }
-      window.requestAnimationFrame(loop);
-    }
-
-    async function predict() {
-      const prediction = await model.predict(webcam);
-      let maxProbability = -1;
-      let maxClass = "";
-
-      for (let i = 0; i < maxPredictions; i++) {
-        if (prediction[i].probability > maxProbability) {
-          maxProbability = prediction[i].probability;
-          maxClass = prediction[i].className;
+      async function loop() {
+        if (!isFrozen) {
+          webcam.update(); // Atualizar o quadro da webcam apenas se não estiver congelada
         }
+        await predict(); // Sempre prever, mesmo se congelado
+        window.requestAnimationFrame(loop);
       }
 
-      labelContainer.innerHTML = maxClass + ": " + maxProbability.toFixed(2);
-    }
+      // Executar a imagem da webcam através do modelo de imagem
+      async function predict() {
+        // A previsão pode aceitar uma imagem, vídeo ou elemento de canvas HTML
+        const prediction = await model.predict(webcam.canvas);
+        let maxProbability = -1;
+        let maxClass = "";
 
-    document.body.addEventListener("click", toggleCamera);
+        for (let i = 0; i < maxPredictions; i++) {
+          if (prediction[i].probability > maxProbability) {
+            maxProbability = prediction[i].probability;
+            maxClass = prediction[i].className;
+          }
+        }
 
-    async function toggleCamera() {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const currentCamera = devices.find(device => device.kind === 'videoinput' && device.label.includes('facingMode'));
-        const newCamera = devices.find(device => device.kind === 'videoinput' && !device.label.includes(currentCamera.label));
-
-        const constraints = {
-          video: {
-            deviceId: newCamera ? { exact: newCamera.deviceId } : undefined,
-            facingMode: newCamera ? undefined : 'user', // 'user' for frontal, 'environment' for traseira
-          },
-        };
-
-        webcam = await navigator.mediaDevices.getUserMedia(constraints);
-        videoElement.srcObject = webcam;
-      } catch (error) {
-        console.error('Erro ao mudar de câmera:', error);
+        labelContainer.innerHTML = maxClass + ": " + maxProbability.toFixed(2);
       }
-    }
 
-    const videoElement = document.getElementById('video-element');
-    labelContainer = document.getElementById('label-container');
+      // Adicionar um ouvinte de evento de clique para congelar/descongelar
+      document.body.addEventListener("click", () => {
+        isFrozen = !isFrozen; // Inverter o estado de congelamento
+      });
 
-    init();
-  </script>
-</body>
+      // Inicialize o aplicativo automaticamente sem a necessidade de um botão Iniciar
+      init();
+    </script>
+  </body>
 </html>
