@@ -56,15 +56,10 @@
         maxPredictions = model.getTotalClasses();
 
         // Função de conveniência para configurar uma webcam
-        const constraints = {
-          video: {
-            facingMode: {
-              exact: "environment", // Forçar o uso da câmera traseira
-            },
-          },
-        };
-        webcam = new tmImage.Webcam(1000, 750, constraints); // Largura, altura, constraints
-        await webcam.setup(); // Solicitar acesso à webcam
+
+        const flip = false; //
+        webcam = new tmImage.Webcam(1280, 720, flip); //
+        await webcam.setup({ facingMode: "environment" }); // <--aca esta la magia
         await webcam.play();
         window.requestAnimationFrame(loop);
 
