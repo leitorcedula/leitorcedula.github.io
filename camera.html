@@ -37,6 +37,8 @@
   <body>
     <div id="webcam-container"></div>
     <div id="label-container">Leitor de Cédulas</div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script type="text/javascript">
       const constraints = {
         video: {
@@ -57,15 +59,20 @@
           const webcamContainer = document.getElementById("webcam-container");
           webcamContainer.appendChild(videoElement);
 
-          // Adicione a lógica da sua IA aqui usando o stream de vídeo
-          const modelURL = "URL_DO_SEU_MODELO"; // Substitua pelo URL do seu modelo de IA
-          const model = await tmImage.load(modelURL, "metadata.json"); // Carregue o modelo
-          
+          // Carregue o modelo de IA
+          const URL = "URL_DO_SEU_MODELO"; // Substitua pelo URL do seu modelo de IA
+          const modelURL = URL + "model.json";
+          const metadataURL = URL + "metadata.json";
+          const model = await tmImage.load(modelURL, metadataURL);
+
           // Lógica para usar o modelo com o vídeo
           setInterval(async () => {
             const prediction = await model.predict(videoElement);
-            // Faça algo com as previsões da IA aqui
-            console.log(prediction);
+            // Encontre a classe com maior probabilidade
+            const maxPrediction = Math.max(...prediction.map(obj => obj.probability));
+            const predictedClass = prediction.find(obj => obj.probability === maxPrediction).className;
+            // Atualize o contêiner com a classe prevista
+            document.getElementById("label-container").innerText = predictedClass;
           }, 1000); // Atualiza a IA a cada 1 segundo
         } catch (error) {
           console.error("Erro ao acessar a câmera: ", error);
