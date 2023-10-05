@@ -56,7 +56,7 @@
         maxPredictions = model.getTotalClasses();
 
         // Função de conveniência para configurar uma webcam
-        const flip = true; // Inverter a câmera
+        const flip = false; // Inverter a câmera
         webcam = new tmImage.Webcam(1000, 750, flip); // Largura, altura, inverter
         await webcam.setup(); // Solicitar acesso à webcam
         await webcam.play();
